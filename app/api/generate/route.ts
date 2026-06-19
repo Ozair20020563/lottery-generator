@@ -5,7 +5,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { gameId, includeNumbers, excludeNumbers, lines } = body;
 
-    // Game configurations
     const gameConfigs: Record<string, { mainMax: number; mainCount: number; bonusMax?: number; bonusCount: number }> = {
       '1': { mainMax: 69, mainCount: 5, bonusMax: 26, bonusCount: 1 },
       '2': { mainMax: 70, mainCount: 5, bonusMax: 25, bonusCount: 1 },
@@ -29,7 +28,6 @@ export async function POST(request: NextRequest) {
         if (!exclude.includes(i)) available.push(i);
       }
       
-      // Shuffle
       for (let i = available.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [available[i], available[j]] = [available[j], available[i]];

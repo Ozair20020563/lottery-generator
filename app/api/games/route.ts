@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  // Hardcoded lottery games - no database needed
   const games = [
     {
       id: '1',
