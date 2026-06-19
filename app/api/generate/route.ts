@@ -5,10 +5,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { gameId, includeNumbers, excludeNumbers, lines } = body;
 
-    const gameConfigs: Record<string, { mainMax: number; mainCount: number; bonusMax?: number; bonusCount: number }> = {
+    const gameConfigs: Record<string, { mainMax: number; mainCount: number; bonusMax?: number; bonusCount: number; isPick?: boolean }> = {
       '1': { mainMax: 69, mainCount: 5, bonusMax: 26, bonusCount: 1 },
       '2': { mainMax: 70, mainCount: 5, bonusMax: 25, bonusCount: 1 },
       '3': { mainMax: 49, mainCount: 6, bonusCount: 0 },
+      '4': { mainMax: 47, mainCount: 7, bonusCount: 0 },
+      '5': { mainMax: 50, mainCount: 7, bonusCount: 0 },
+      '6': { mainMax: 9, mainCount: 2, bonusCount: 0, isPick: true },
+      '7': { mainMax: 9, mainCount: 3, bonusCount: 0, isPick: true },
+      '8': { mainMax: 9, mainCount: 4, bonusCount: 0, isPick: true },
+      '9': { mainMax: 49, mainCount: 5, bonusMax: 10, bonusCount: 1 },
+      '10': { mainMax: 50, mainCount: 5, bonusMax: 12, bonusCount: 2 },
+      '11': { mainMax: 49, mainCount: 6, bonusCount: 0 },
     };
 
     const config = gameConfigs[gameId];
@@ -23,11 +31,12 @@ export async function POST(request: NextRequest) {
 
     for (let line = 0; line < linesCount; line++) {
       // Generate main numbers
-      const available: number[] = [];
-      for (let i = 1; i <= config.mainMax; i++) {
+      let available: number[] = [];
+      for (let i = (config.isPick ? 0 : 1); i <= config.mainMax; i++) {
         if (!exclude.includes(i)) available.push(i);
       }
       
+      // Shuffle
       for (let i = available.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [available[i], available[j]] = [available[j], available[i]];
@@ -41,35 +50,42 @@ export async function POST(request: NextRequest) {
       // Generate bonus numbers
       let bonus: number[] = [];
       if (config.bonusCount > 0 && config.bonusMax) {
-        for (let i = 0; i < config.bonusCount; i++) {
-          bonus.push(Math.floor(Math.random() * config.bonusMax) + 1);
+        const bonusPool: number[] = [];
+        for (let i = 1; i <= config.bonusMax; i++) {
+          bonusPool.push(i);
         }
-        bonus.sort((a, b) => a - b);
+        for (let i = bonusPool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [bonusPool[i], bonusPool[j]] = [bonusPool[j], bonusPool[i]];
+        }
+        bonus = bonusPool.slice(0, config.bonusCount).sort((a, b) => a - b);
       }
       
-      // Calculate uniqueness score
+      // Calculate uniqueness score (only for non-Pick games)
       let score = 100;
       const warnings: string[] = [];
       
-      const birthdayCount = main.filter(n => n <= 31).length;
-      if (birthdayCount > 3) {
-        score -= 25;
-        warnings.push(`${birthdayCount} numbers in birthday range (1-31)`);
-      }
-      
-      let consecutiveCount = 0;
-      for (let i = 0; i < main.length - 1; i++) {
-        if (main[i + 1] === main[i] + 1) consecutiveCount++;
-      }
-      if (consecutiveCount >= 2) {
-        score -= 30;
-        warnings.push(`${consecutiveCount + 1} consecutive numbers detected`);
-      }
-      
-      const oddCount = main.filter(n => n % 2 === 1).length;
-      if (oddCount === 0 || oddCount === main.length) {
-        score -= 20;
-        warnings.push("All numbers are same parity");
+      if (!config.isPick) {
+        const birthdayCount = main.filter(n => n <= 31).length;
+        if (birthdayCount > 3) {
+          score -= 25;
+          warnings.push(`${birthdayCount} numbers in birthday range (1-31)`);
+        }
+        
+        let consecutiveCount = 0;
+        for (let i = 0; i < main.length - 1; i++) {
+          if (main[i + 1] === main[i] + 1) consecutiveCount++;
+        }
+        if (consecutiveCount >= 2) {
+          score -= 30;
+          warnings.push(`${consecutiveCount + 1} consecutive numbers detected`);
+        }
+        
+        const oddCount = main.filter(n => n % 2 === 1).length;
+        if (oddCount === 0 || oddCount === main.length) {
+          score -= 20;
+          warnings.push("All numbers are same parity");
+        }
       }
       
       results.push({
